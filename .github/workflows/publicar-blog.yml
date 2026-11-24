@@ -1,13 +1,18 @@
-# Publica o blog no GitHub Pages a cada novo artigo (commit na branch main)
+# Publica o blog no GitHub Pages.
+# - A cada commit na branch main.
+# - De hora em hora: busca artigos novos na pasta "Blog Tyar - Artigos" do Google Drive
+#   (sync-drive.mjs); se houver, guarda no repositório e publica.
 name: Publicar blog
 
 on:
   push:
     branches: [main]
+  schedule:
+    - cron: "23 * * * *"
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -18,23 +23,53 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    outputs:
+      publicar: ${{ steps.decide.outputs.publicar }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
       - run: npm install
-      - run: npm run build
+
+      - name: Buscar artigos novos no Google Drive
+        id: sync
+        run: node sync-drive.mjs
+
+      - name: Guardar artigos novos no repositório
+        if: steps.sync.outputs.novos != '0'
+        run: |
+          git config user.name "Blog Tyar (automático)"
+          git config user.email "tyar-workstation@users.noreply.github.com"
+          git add -- *.md
+          git commit -m "Novos artigos do Drive (${{ steps.sync.outputs.novos }})"
+          git push
+
+      - name: Decidir se publica
+        id: decide
+        run: |
+          if [ "${{ github.event_name }}" != "schedule" ] || [ "${{ steps.sync.outputs.novos }}" != "0" ]; then
+            echo "publicar=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "publicar=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Gerar o blog
+        if: steps.decide.outputs.publicar == 'true'
+        run: npm run build
         env:
           SITE_URL: https://blog.tyar.com.br
           BASE_PATH: ""
           GTM_ID: GTM-P5QS7MMQ
+
       - uses: actions/upload-pages-artifact@v3
+        if: steps.decide.outputs.publicar == 'true'
         with:
           path: dist
 
   deploy:
     needs: build
+    if: needs.build.outputs.publicar == 'true'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
