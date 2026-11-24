@@ -1,0 +1,16 @@
+{
+  "name": "tyar-blog",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Blog da Tyar: site estático gerado a partir de artigos em Markdown (content/posts).",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "preview": "npx --yes serve dist"
+  },
+  "dependencies": {
+    "@resvg/resvg-js": "^2.6.2",
+    "gray-matter": "^4.0.3",
+    "marked": "^18.0.0"
+  }
+}

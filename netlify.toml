@@ -1,0 +1,10 @@
+# Publicação no Netlify: a cada commit na branch main, o Netlify gera o site e publica.
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+  SITE_URL = "https://blog.tyar.com.br"
+  BASE_PATH = ""
+  GTM_ID = "GTM-P5QS7MMQ"
