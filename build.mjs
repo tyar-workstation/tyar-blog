@@ -4,11 +4,17 @@ import fs from "node:fs";
 import path from "node:path";
 import matter from "gray-matter";
 import { marked } from "marked";
-import cfg from "../site.config.mjs";
+import fs0 from "node:fs";
+import path0 from "node:path";
+// Funciona com o projeto em pastas (scripts/, content/posts/, public/) ou com tudo na raiz.
+const HERE = path0.dirname(new URL(import.meta.url).pathname);
+const FLAT = fs0.existsSync(path0.join(HERE, "site.config.mjs"));
+const cfg = (await import(FLAT ? "./site.config.mjs" : "../site.config.mjs")).default;
 import { renderCovers } from "./covers.mjs";
 
-const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..");
-const POSTS_DIR = path.join(ROOT, "content/posts");
+const ROOT = FLAT ? HERE : path.resolve(HERE, "..");
+const POSTS_DIR = fs.existsSync(path.join(ROOT, "content/posts")) ? path.join(ROOT, "content/posts") : ROOT;
+const asset = (name) => [path.join(ROOT, "public", name), path.join(ROOT, name)].find((f) => fs.existsSync(f));
 const OUT = path.join(ROOT, "dist");
 const SITE = cfg.siteUrl.replace(/\/$/, "") + cfg.basePath;
 fs.rmSync(OUT, { recursive: true, force: true });
@@ -34,7 +40,7 @@ const errors = [];
 const CATEGORY_ALIAS = { "Cluster/HPC": "Cluster", "Decisão de compra/TCO": "Decisão de compra" };
 const posts = fs
   .readdirSync(POSTS_DIR)
-  .filter((f) => f.endsWith(".md"))
+  .filter((f) => f.endsWith(".md") && /^\d{4}-\d{2}-\d{2}-/.test(f))
   .map((file) => {
     const raw = fs.readFileSync(path.join(POSTS_DIR, file), "utf8");
     const { data, content } = matter(raw);
@@ -67,7 +73,7 @@ const categories = [...new Map(posts.map((p) => [p.catSlug, p.category])).entrie
 }));
 
 // ---------- template ----------
-const LOGO = fs.readFileSync(path.join(ROOT, "public/logo.svg"), "utf8").replace(/id="g"/, 'id="lg"').replace(/url\(#g\)/, "url(#lg)");
+const LOGO = fs.readFileSync(asset("logo.svg"), "utf8").replace(/id="g"/, 'id="lg"').replace(/url\(#g\)/, "url(#lg)");
 const CAT_CODE = {
   "inteligencia-artificial": "IA",
   workstations: "WS",
@@ -443,7 +449,7 @@ ${cfg.nav.map((n) => `- [${n.label}](${n.href})`).join("\n")}
 // CNAME para GitHub Pages quando o blog roda em subdomínio próprio
 if (!cfg.basePath && !/github\.io/.test(cfg.siteUrl)) write("CNAME", new URL(cfg.siteUrl).host + "\n");
 
-fs.copyFileSync(path.join(ROOT, "public/style.css"), path.join(OUT, "style.css"));
+fs.copyFileSync(asset("style.css"), path.join(OUT, "style.css"));
 write(".nojekyll", "");
 
 console.log(`OK: ${posts.length} artigos, ${categories.length} categorias → dist/`);

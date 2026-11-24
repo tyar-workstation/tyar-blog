@@ -188,7 +188,7 @@ export function renderCovers({ posts, outDir, root, hueOf, logoSvg }) {
   fs.mkdirSync(outDir, { recursive: true });
   // logo dentro da capa: só os caminhos (sem <svg> externo)
   const logoInner = logoSvg.replace(/^[\s\S]*?<svg[^>]*>/, "").replace(/<\/svg>\s*$/, "").replace(/id="lg"/g, 'id="lgc"').replace(/url\(#lg\)/g, "url(#lgc)");
-  const fontFiles = ["fonts/Inter-SemiBold.otf", "fonts/Inter-Medium.otf"].map((f) => path.join(root, f));
+  const fontFiles = ["Inter-SemiBold.otf", "Inter-Medium.otf"].map((f) => [path.join(root, "fonts", f), path.join(root, f)].find((p) => fs.existsSync(p)));
   for (const p of posts) {
     const hue = hueOf(p.catSlug);
     fs.writeFileSync(path.join(outDir, `${p.slug}.svg`), coverSvg(p, { hue }));

@@ -5,7 +5,7 @@
   "type": "module",
   "description": "Blog da Tyar: site estático gerado a partir de artigos em Markdown (content/posts).",
   "scripts": {
-    "build": "node scripts/build.mjs",
+    "build": "node build.mjs || node scripts/build.mjs",
     "preview": "npx --yes serve dist"
   },
   "dependencies": {
