@@ -137,6 +137,15 @@ h1, h2, h3 { text-wrap: balance; letter-spacing: -0.02em; }
 .prose tr:last-child td { border-bottom: 0; }
 .prose td:first-child { color: #fff; font-weight: 500; }
 
+/* links internos e guia pilar */
+.prose a.ilink { color: #d9b3f5; text-decoration-color: rgba(162,82,217,.6); }
+.pillar-link { display: inline-block; margin-top: 18px; font-size: 14px; color: var(--text-2); padding: 8px 14px; border: 1px solid rgba(162,82,217,.35); border-radius: 999px; background: rgba(128,62,172,.12); }
+.pillar-link strong { color: #fff; font-weight: 600; }
+.pillar-box { display: grid; gap: 6px; margin: 0 0 28px; padding: 24px 26px; border-radius: var(--radius); background: radial-gradient(120% 140% at 100% 0%, rgba(162,82,217,.45), transparent 55%), var(--surface-2); border: 1px solid rgba(162,82,217,.4); color: var(--text); }
+.pillar-box .eyebrow { margin: 0; }
+.pillar-box strong { font-size: 22px; font-weight: 600; }
+.pillar-box span:last-child { color: var(--brand-hi); font-weight: 600; font-size: 14px; }
+
 /* sumário lateral */
 .toc { position: sticky; top: 100px; align-self: start; font-size: 14px; }
 .toc-title { margin: 0 0 14px; font: 500 11px/1 var(--mono); text-transform: uppercase; letter-spacing: .14em; color: var(--muted); }
