@@ -256,6 +256,79 @@ write(
   })
 );
 
+// ---------- links internos automáticos ----------
+// Liga cada artigo aos outros: a primeira menção à palavra-chave principal de outro
+// artigo vira link para ele (no máximo 6 links por artigo, 1 por destino).
+const MAX_AUTO_LINKS = 6;
+const escRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+// termos de cada artigo: palavra-chave principal + tags exclusivas dele (ex.: "Proxmox VE", "RAID 6", "NAS")
+const GENERIC = new Set(["workstation", "servidor", "servidores", "storage", "gpu", "cluster", "virtualização", "projeção", "hardware", "nvme", "inferência", "datacenter", "museus", "eventos", "arquitetura", "engenharia", "simulação", "decisão de compra", "nuvem", "on-premise", "llm", "ia local"]);
+const tagCount = new Map();
+for (const p of posts) for (const t of new Set((p.tags || []).map((x) => String(x).toLowerCase()))) tagCount.set(t, (tagCount.get(t) || 0) + 1);
+const okTag = (t) => {
+  const k = String(t).toLowerCase();
+  if (GENERIC.has(k) || tagCount.get(k) !== 1) return false;
+  return k.length >= 5 || /^[A-Z0-9]{3,4}$/.test(String(t));
+};
+const linkTargets = posts
+  .map((p) => ({ slug: p.slug, terms: [p.focus_keyword, ...(Array.isArray(p.link_terms) ? p.link_terms : []), ...(p.tags || []).filter(okTag)].filter((t) => t && String(t).length >= 3).map(String) }))
+  .flatMap((t) => t.terms.map((term) => ({ slug: t.slug, term, re: new RegExp(`(?<![\\p{L}\\p{N}])(${escRe(term)})(?![\\p{L}\\p{N}])`, /^[A-Z0-9]{3,4}$/.test(term) ? "u" : "iu") })))
+  .sort((a, b) => b.term.length - a.term.length);
+
+function autoLink(html, self, r) {
+  const used = new Set([self]);
+  for (const m of html.matchAll(/href="[^"]*?\/([a-z0-9-]+)\/"/g)) used.add(m[1]);
+  let count = 0;
+  const BLOCK = /^(a|h1|h2|h3|h4|h5|h6|code|pre|th|summary)$/i;
+  let depth = 0;
+  const parts = html.split(/(<[^>]+>)/);
+  for (let i = 0; i < parts.length && count < MAX_AUTO_LINKS; i++) {
+    const part = parts[i];
+    if (part.startsWith("<")) {
+      const m = part.match(/^<(\/?)([a-z0-9]+)/i);
+      if (m && BLOCK.test(m[2]) && !part.endsWith("/>")) depth += m[1] ? -1 : 1;
+      continue;
+    }
+    if (depth > 0 || !part.trim()) continue;
+    let text = part;
+    for (const t of linkTargets) {
+      if (count >= MAX_AUTO_LINKS) break;
+      if (used.has(t.slug)) continue;
+      const mm = text.match(t.re);
+      if (!mm) continue;
+      const at = mm.index;
+      text = `${text.slice(0, at)}<a class="ilink" href="${r}${t.slug}/">${mm[1]}</a>${text.slice(at + mm[1].length)}`;
+      used.add(t.slug);
+      count++;
+      break; // um link por trecho de texto, para não aninhar
+    }
+    parts[i] = text;
+  }
+  return parts.join("");
+}
+
+// artigos relacionados: mesma categoria, tags em comum e palavra-chave citada no texto
+function relatedFor(p) {
+  const tags = new Set((p.tags || []).map((t) => String(t).toLowerCase()));
+  const body = p.html.toLowerCase();
+  return posts
+    .filter((x) => x.slug !== p.slug)
+    .map((x) => ({
+      x,
+      score:
+        (x.catSlug === p.catSlug ? 3 : 0) +
+        (x.tags || []).filter((t) => tags.has(String(t).toLowerCase())).length * 2 +
+        (x.focus_keyword && body.includes(String(x.focus_keyword).toLowerCase()) ? 2 : 0) +
+        (x.pillar && x.catSlug === p.catSlug ? 4 : 0),
+    }))
+    .sort((a, b) => b.score - a.score || (a.x.date < b.x.date ? 1 : -1))
+    .slice(0, 3)
+    .map((s) => s.x);
+}
+
+// guia principal (pilar) de cada categoria: artigo com "pillar: true"
+const pillarOf = new Map(posts.filter((p) => p.pillar).map((p) => [p.catSlug, p]));
+
 // ---------- páginas de categoria ----------
 for (const c of categories) {
   const r = "../../";
@@ -273,7 +346,8 @@ for (const c of categories) {
 </div></section>
 <section class="wrap list">
   <div class="list-head">${catBar(r, c.slug)}</div>
-  <div class="grid">${posts.filter((p) => p.catSlug === c.slug).map((p) => card(p, r)).join("")}</div>
+  ${pillarOf.get(c.slug) ? `<a class="pillar-box" href="${r}${pillarOf.get(c.slug).slug}/"><span class="eyebrow">Guia completo</span><strong>${esc(pillarOf.get(c.slug).title)}</strong><span>Comece por aqui →</span></a>` : ""}
+  <div class="grid">${posts.filter((p) => p.catSlug === c.slug && !p.pillar).map((p) => card(p, r)).join("")}</div>
 </section>`,
     })
   );
@@ -283,11 +357,10 @@ for (const c of categories) {
 for (const p of posts) {
   const r = "../";
   const url = `${SITE}/${p.slug}/`;
-  const { html, toc } = enhance(p.html);
-  const related = posts
-    .filter((x) => x.slug !== p.slug)
-    .sort((a, b) => (b.catSlug === p.catSlug) - (a.catSlug === p.catSlug))
-    .slice(0, 3);
+  const { html: html0, toc } = enhance(p.html);
+  const html = autoLink(html0, p.slug, r);
+  const related = relatedFor(p);
+  const pillar = pillarOf.get(p.catSlug);
   const faq = Array.isArray(p.faq) ? p.faq : [];
   const graph = [
     {
@@ -341,6 +414,7 @@ ${jsonld({ "@context": "https://schema.org", "@graph": graph })}`,
     <h1>${esc(p.title)}</h1>
     <p class="lead">${esc(p.description)}</p>
     <div class="meta"><span>${esc(p.author || "Equipe Tyar")}</span><time datetime="${p.date}">${fmtDate(p.date)}</time>${p.reading_time ? `<span>${p.reading_time} min de leitura</span>` : ""}</div>
+    ${pillar && pillar.slug !== p.slug ? `<a class="pillar-link" href="${r}${pillar.slug}/">Parte do guia: <strong>${esc(pillar.title)}</strong> →</a>` : ""}
     </div>
     <figure class="post-cover"><img src="${r}capas/${p.slug}.svg" alt="" width="1200" height="630"></figure>
   </div>
