@@ -138,7 +138,14 @@ function wrap(text, max) {
 }
 const x = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
-export function coverSvg(post, { hue = 275, withText = false, logo = "" } = {}) {
+// paleta clara para as capas usadas dentro do blog (a versão com título, para redes sociais, continua escura)
+const LIGHT = [["#ffffff", "#3d2559"], ["#0d0d0d", "#f4eefb"], ["#1c1c22", "#ffffff"], ["#1d1d23", "#ffffff"], ["#18181d", "#f7f2fd"], ["#202027", "#ffffff"], ["#141418", "#f3ecfb"], ["#2b2b33", "#d8cbe9"], ["#3a3a42", "#cdbfe0"]];
+export function coverSvg(post, opts = {}) {
+  const svg = coverSvgDark(post, opts);
+  return opts.light ? LIGHT.reduce((acc, [a, b]) => acc.split(a).join(b), svg) : svg;
+}
+
+function coverSvgDark(post, { hue = 275, withText = false, logo = "" } = {}) {
   const rnd = seeded(post.slug);
   const gx = r1(820 + rnd() * 300);
   const gy = r1(80 + rnd() * 200);
@@ -191,7 +198,7 @@ export function renderCovers({ posts, outDir, root, hueOf, logoSvg }) {
   const fontFiles = ["Inter-SemiBold.otf", "Inter-Medium.otf"].map((f) => [path.join(root, "fonts", f), path.join(root, f)].find((p) => fs.existsSync(p)));
   for (const p of posts) {
     const hue = hueOf(p.catSlug);
-    fs.writeFileSync(path.join(outDir, `${p.slug}.svg`), coverSvg(p, { hue }));
+    fs.writeFileSync(path.join(outDir, `${p.slug}.svg`), coverSvg(p, { hue, light: true }));
     const svg = coverSvg(p, { hue, withText: true, logo: logoInner });
     const png = new Resvg(svg, { font: { fontFiles, loadSystemFonts: false, defaultFontFamily: "Inter" }, fitTo: { mode: "width", value: W } }).render().asPng();
     fs.writeFileSync(path.join(outDir, `${p.slug}.png`), png);
