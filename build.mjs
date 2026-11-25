@@ -128,6 +128,7 @@ document.addEventListener('click',function(e){var a=e.target.closest('a[data-cta
 <link rel="canonical" href="${canonical}">
 <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
 <meta name="theme-color" content="#0d0d0d">
+<script>(function(){var t="light";try{t=localStorage.getItem("tyar-tema")||"light"}catch(e){}document.documentElement.setAttribute("data-theme",t)})()</script>
 <link rel="icon" type="image/png" sizes="32x32" href="${r}favicon-32.png">
 <link rel="icon" type="image/png" sizes="48x48" href="${r}favicon-48.png">
 <link rel="apple-touch-icon" sizes="180x180" href="https://cdn.prod.website-files.com/69c1b09c926b19ea441f8393/6a09ce200a41da4d69ef7314_webclip.png">
@@ -155,6 +156,7 @@ ${progress ? '<div class="progress" aria-hidden="true"><span id="progress"></spa
   <div class="wrap top-in">
     <a class="brand" href="${r}" aria-label="Blog Tyar – início">${LOGO}<span class="brand-tag">Blog</span></a>
     <nav class="nav" aria-label="Soluções Tyar">${cfg.nav.map((n) => `<a href="${n.href}">${esc(n.label)}</a>`).join("")}</nav>
+    <button class="theme-btn" type="button" aria-label="Alternar tema claro/escuro" title="Tema claro/escuro" onclick="var h=document.documentElement,t=h.getAttribute('data-theme')==='dark'?'light':'dark';h.setAttribute('data-theme',t);try{localStorage.setItem('tyar-tema',t)}catch(e){}"><svg class="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><svg class="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button>
     <a class="btn btn-sm" data-cta="header" href="${cfg.contactUrl}" rel="noopener">Entre em contato</a>
   </div>
 </header>
