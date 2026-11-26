@@ -441,7 +441,9 @@ for (const p of posts) {
   const url = `${SITE}/${p.slug}/`;
   const { answer, html: htmlA } = takeAnswer(p, p.html);
   const { html: html0, toc } = enhance(htmlA);
-  const html = ensureSameTopicLinks(addLpLink(autoLink(html0, p.slug, r), p.catSlug), p, r);
+  // links para a LP com UTM: o formulário da LP grava a origem (blog) e o artigo na planilha de leads
+  const lpHref = `${LP_URL}?utm_source=blog&amp;utm_medium=artigo&amp;utm_campaign=blog-tyar&amp;utm_content=${p.slug}`;
+  const html = ensureSameTopicLinks(addLpLink(autoLink(html0, p.slug, r), p.catSlug), p, r).replace(/href="https:\/\/workstations\.tyar\.com\.br\/?"/g, `href="${lpHref}"`);
   const updated = p.updated || p.date;
   const related = relatedFor(p);
   const pillar = pillarOf.get(p.catSlug);
@@ -518,7 +520,7 @@ ${jsonld({ "@context": "https://schema.org", "@graph": graph })}`,
         <p>A Tyar configura a máquina a partir do seu fluxo de trabalho. Orçamento em 1 dia útil.</p>
       </div>
       <div class="cta-btns">
-        <a class="btn" data-cta="lp-workstations" href="${LP_URL}">Solicitar orçamento</a>
+        <a class="btn" data-cta="lp-workstations" href="${lpHref}">Solicitar orçamento</a>
         <a class="btn btn-ghost" data-cta="especialista" href="${cfg.contactUrl}" rel="noopener">Falar no WhatsApp</a>
       </div>
     </aside>
