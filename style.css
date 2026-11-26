@@ -265,3 +265,20 @@ html[data-theme="light"] .nav a { color: #c9c2d6; }
 html[data-theme="dark"] .theme-btn .i-sun { display: block; }
 html[data-theme="dark"] .theme-btn .i-moon { display: none; }
 .theme-btn { margin-left: auto; margin-right: -16px; }
+
+/* ===== Resposta rápida, autor e links do mesmo tema ===== */
+.answer { max-width: 62ch; margin: 0 0 22px; padding: 16px 20px; border-left: 3px solid var(--brand); border-radius: 0 12px 12px 0; background: rgba(162,82,217,.1); }
+.answer p { margin: 0; color: var(--text); font-size: 17px; line-height: 1.6; }
+.answer .answer-label { font-family: "JetBrains Mono", monospace; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--brand-hi); margin-bottom: 6px; }
+.author-box { display: flex; gap: 18px; align-items: flex-start; margin-top: 48px; padding: 22px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); }
+.author-avatar { flex: none; width: 64px; height: 64px; border-radius: 50%; background: #17121f; display: grid; place-items: center; }
+.author-avatar svg { width: 44px; height: auto; }
+.author-box p { margin: 0; color: var(--text-2); font-size: 15px; line-height: 1.6; }
+.author-box .author-name { color: var(--text); font-weight: 600; font-size: 16px; margin-bottom: 4px; }
+.author-box .author-date { color: var(--muted); font-size: 13px; margin-top: 8px; }
+.prose .same-topic { padding: 14px 18px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--line); font-size: 16px; }
+html[data-theme="light"] .answer { background: rgba(128,62,172,.07); }
+html[data-theme="light"] .answer .answer-label { color: #6b2fa0; }
+@media (max-width: 600px) { .author-box { flex-direction: column; } }
+.cta { grid-template-columns: 1fr; align-items: start; }
+.cta h2 { line-height: 1.25; }
