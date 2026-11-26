@@ -358,29 +358,108 @@ for (const c of categories) {
   );
 }
 
+// ---------- recursos dos artigos ----------
+const LP_URL = cfg.lpUrl || "https://workstations.tyar.com.br/";
+const AUTHOR_BIO = "Time técnico da Tyar, que há mais de 25 anos projeta, configura e dá suporte a workstations, servidores, storage e infraestrutura para IA. São mais de 3.600 projetos e 18.700 máquinas entregues para empresas no Brasil.";
+
+// parágrafos de primeiro nível (fora de listas, tabelas, citações e do "Resumo rápido")
+function topParas(html) {
+  const out = [];
+  const re = /<(\/?)(p|li|ul|ol|table|blockquote|aside|details)\b[^>]*>/gi;
+  let depth = 0, m, start = -1;
+  while ((m = re.exec(html))) {
+    const tag = m[2].toLowerCase(), close = !!m[1];
+    if (tag === "p") {
+      if (!close && depth === 0) start = m.index;
+      else if (close && start >= 0) { out.push({ start, end: re.lastIndex }); start = -1; }
+      continue;
+    }
+    depth += close ? -1 : 1;
+  }
+  return out;
+}
+
+// resposta curta (2 a 3 frases) logo abaixo do título: campo "answer" ou o parágrafo de abertura do artigo
+function takeAnswer(p, html) {
+  if (p.answer) return { answer: marked.parseInline(String(p.answer)), html };
+  const firstH2 = html.search(/<h2[\s>]/);
+  const first = topParas(html)[0];
+  if (!first || (firstH2 >= 0 && first.start > firstH2)) return { answer: "", html };
+  const inner = html.slice(first.start, first.end).replace(/^<p>|<\/p>$/g, "").trim();
+  const sentences = inner.split(/(?<=[.!?])\s+(?=[A-ZÁÉÍÓÚÂÊÔÃÕÇ"“(<])/);
+  let keep = Math.min(3, sentences.length);
+  if (keep === 3 && sentences.slice(0, 3).join(" ").replace(/<[^>]+>/g, "").length > 560) keep = 2;
+  const answer = sentences.slice(0, keep).join(" ");
+  const rest = sentences.slice(keep).join(" ");
+  return { answer, html: html.slice(0, first.start) + (rest ? `<p>${rest}</p>` : "") + html.slice(first.end) };
+}
+
+// link contextual para a LP de workstations no trecho que fala de dimensionar o hardware
+function lpSentence(cat) {
+  const a = (t) => `<a class="ilink lp-link" data-cta="lp-texto" href="${LP_URL}">${t}</a>`;
+  if (/^(inteligencia-artificial|cluster)/.test(cat)) return ` Se a carga vai rodar em uma máquina local, vale conhecer a ${a("workstation para IA sob medida")} da Tyar.`;
+  if (/^(workstations|decisao-de-compra)/.test(cat)) return ` Para chegar à configuração certa, veja como a Tyar monta cada ${a("workstation sob medida para o seu fluxo de trabalho")}.`;
+  return ` Quando parte do trabalho roda na estação de quem usa, a Tyar também monta ${a("workstations sob medida para IA, engenharia e criação")}.`;
+}
+function addLpLink(html, cat) {
+  if (html.includes(LP_URL)) return html;
+  const paras = topParas(html);
+  const firstH2 = html.search(/<h2[\s>]/);
+  const pick =
+    paras.find((x) => x.start > firstH2 && /dimension/i.test(html.slice(x.start, x.end))) ||
+    paras.find((x) => /dimension/i.test(html.slice(x.start, x.end))) ||
+    paras.find((x) => /configura|hardware|escolh/i.test(html.slice(x.start, x.end)) && x.start > firstH2) ||
+    paras[paras.length - 1];
+  if (!pick) return html;
+  const at = pick.end - 4; // antes de </p>
+  return html.slice(0, at) + lpSentence(cat) + html.slice(at);
+}
+
+// garante 2 a 3 links para artigos do mesmo tema (categoria)
+function ensureSameTopicLinks(html, p, r) {
+  const same = posts.filter((x) => x.catSlug === p.catSlug && x.slug !== p.slug);
+  const linked = new Set([...html.matchAll(/href="[^"]*?\/([a-z0-9-]+)\/"/g)].map((m) => m[1]));
+  const have = same.filter((x) => linked.has(x.slug)).length;
+  if (have >= 2 || !same.length) return html;
+  const tags = new Set((p.tags || []).map((t) => String(t).toLowerCase()));
+  const extra = same
+    .filter((x) => !linked.has(x.slug))
+    .map((x) => ({ x, s: (x.pillar ? 5 : 0) + (x.tags || []).filter((t) => tags.has(String(t).toLowerCase())).length }))
+    .sort((a, b) => b.s - a.s || (a.x.date < b.x.date ? 1 : -1))
+    .slice(0, 3 - have)
+    .map(({ x }) => `<a class="ilink" href="${r}${x.slug}/">${esc(x.title)}</a>`);
+  if (!extra.length) return html;
+  const list = extra.length === 1 ? extra[0] : `${extra.slice(0, -1).join(", ")} e ${extra[extra.length - 1]}`;
+  const block = `<p class="same-topic">Para se aprofundar em ${esc(p.category.toLowerCase())}, leia também ${list}.</p>`;
+  const help = html.search(/<h2 id="[^"]*"[^>]*>Como a Tyar/);
+  return help >= 0 ? html.slice(0, help) + block + html.slice(help) : html + block;
+}
+
 // ---------- artigos ----------
 for (const p of posts) {
   const r = "../";
   const url = `${SITE}/${p.slug}/`;
-  const { html: html0, toc } = enhance(p.html);
-  const html = autoLink(html0, p.slug, r);
+  const { answer, html: htmlA } = takeAnswer(p, p.html);
+  const { html: html0, toc } = enhance(htmlA);
+  const html = ensureSameTopicLinks(addLpLink(autoLink(html0, p.slug, r), p.catSlug), p, r);
+  const updated = p.updated || p.date;
   const related = relatedFor(p);
   const pillar = pillarOf.get(p.catSlug);
   const faq = Array.isArray(p.faq) ? p.faq : [];
   const graph = [
     {
-      "@type": "BlogPosting",
+      "@type": "Article",
       headline: p.title,
       image: `${SITE}/capas/${p.slug}.png`,
       description: p.description,
       datePublished: p.date,
-      dateModified: p.updated || p.date,
+      dateModified: updated,
       inLanguage: "pt-BR",
       mainEntityOfPage: url,
       url,
       keywords: [p.focus_keyword, ...(p.tags || [])].join(", "),
       articleSection: p.category,
-      author: { "@type": "Organization", name: p.author || "Equipe Tyar", url: cfg.org.url },
+      author: { "@type": "Organization", name: p.author || "Equipe Tyar", url: cfg.org.url, description: AUTHOR_BIO },
       publisher: { "@type": "Organization", name: cfg.org.name, url: cfg.org.url },
     },
     {
@@ -417,8 +496,8 @@ ${jsonld({ "@context": "https://schema.org", "@graph": graph })}`,
     <div class="post-head-text">
     <nav class="crumbs" aria-label="Você está em"><a href="${r}">Blog</a><span>/</span><a href="${r}categoria/${p.catSlug}/">${esc(p.category)}</a></nav>
     <h1>${esc(p.title)}</h1>
-    <p class="lead">${esc(p.description)}</p>
-    <div class="meta"><span>${esc(p.author || "Equipe Tyar")}</span><time datetime="${p.date}">${fmtDate(p.date)}</time>${p.reading_time ? `<span>${p.reading_time} min de leitura</span>` : ""}</div>
+    ${answer ? `<div class="answer"><p class="answer-label">Resposta rápida</p><p>${answer}</p></div>` : `<p class="lead">${esc(p.description)}</p>`}
+    <div class="meta"><span>Por ${esc(p.author || "Equipe Tyar")}</span><span>Atualizado em <time datetime="${updated}">${fmtDate(updated)}</time></span>${p.reading_time ? `<span>${p.reading_time} min de leitura</span>` : ""}</div>
     ${pillar && pillar.slug !== p.slug ? `<a class="pillar-link" href="${r}${pillar.slug}/">Parte do guia: <strong>${esc(pillar.title)}</strong> →</a>` : ""}
     </div>
     <figure class="post-cover"><img src="${r}capas/${p.slug}.svg" alt="" width="1200" height="630"></figure>
@@ -428,15 +507,19 @@ ${jsonld({ "@context": "https://schema.org", "@graph": graph })}`,
   <article class="post">
     <div class="prose">${html}</div>
     ${faq.length ? `<section class="faq" aria-labelledby="faq"><h2 id="faq">Perguntas frequentes</h2>${faq.map((f) => `<details><summary>${esc(f.q)}</summary><p>${esc(f.a)}</p></details>`).join("")}</section>` : ""}
+    <section class="author-box" aria-label="Sobre o autor">
+      <div class="author-avatar" aria-hidden="true">${LOGO}</div>
+      <div><p class="author-name">${esc(p.author || "Equipe Tyar")}</p><p>${AUTHOR_BIO}</p><p class="author-date">Publicado em ${fmtDate(p.date)} · Atualizado em ${fmtDate(updated)}</p></div>
+    </section>
     <aside class="cta">
       <div>
-        <p class="eyebrow">Fale com a Tyar</p>
-        <h2>Precisa dimensionar seu projeto?</h2>
-        <p>Nossos especialistas configuram a solução certa para sua carga de trabalho e seu orçamento, com suporte depois da entrega.</p>
+        <p class="eyebrow">Workstations Tyar</p>
+        <h2>Precisa rodar LLMs, RAG ou treinar modelos localmente?</h2>
+        <p>A Tyar configura a máquina a partir do seu fluxo de trabalho. Orçamento em 1 dia útil.</p>
       </div>
       <div class="cta-btns">
-        <a class="btn" data-cta="especialista" href="${cfg.contactUrl}" rel="noopener">Falar com especialista</a>
-        ${p.cta_product ? `<a class="btn btn-ghost" data-cta="produto" href="${p.cta_product}">Ver soluções</a>` : ""}
+        <a class="btn" data-cta="lp-workstations" href="${LP_URL}">Solicitar orçamento</a>
+        <a class="btn btn-ghost" data-cta="especialista" href="${cfg.contactUrl}" rel="noopener">Falar no WhatsApp</a>
       </div>
     </aside>
   </article>
