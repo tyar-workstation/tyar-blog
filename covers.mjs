@@ -198,7 +198,10 @@ export function renderCovers({ posts, outDir, root, hueOf, logoSvg }) {
   const fontFiles = ["Inter-SemiBold.otf", "Inter-Medium.otf"].map((f) => [path.join(root, "fonts", f), path.join(root, f)].find((p) => fs.existsSync(p)));
   for (const p of posts) {
     const hue = hueOf(p.catSlug);
-    fs.writeFileSync(path.join(outDir, `${p.slug}.svg`), coverSvg(p, { hue, light: true }));
+    const art = coverSvg(p, { hue, light: true });
+    fs.writeFileSync(path.join(outDir, `${p.slug}.svg`), art);
+    // versão em imagem (PNG) da capa clara: é a que o Google usa como miniatura nos resultados de busca
+    fs.writeFileSync(path.join(outDir, `${p.slug}-capa.png`), new Resvg(art, { fitTo: { mode: "width", value: W } }).render().asPng());
     const svg = coverSvg(p, { hue, withText: true, logo: logoInner });
     const png = new Resvg(svg, { font: { fontFiles, loadSystemFonts: false, defaultFontFamily: "Inter" }, fitTo: { mode: "width", value: W } }).render().asPng();
     fs.writeFileSync(path.join(outDir, `${p.slug}.png`), png);
