@@ -452,7 +452,7 @@ for (const p of posts) {
     {
       "@type": "Article",
       headline: p.title,
-      image: `${SITE}/capas/${p.slug}.png`,
+      image: [`${SITE}/capas/${p.slug}-capa.png`, `${SITE}/capas/${p.slug}.png`],
       description: p.description,
       datePublished: p.date,
       dateModified: updated,
@@ -502,7 +502,7 @@ ${jsonld({ "@context": "https://schema.org", "@graph": graph })}`,
     <div class="meta"><span>Por ${esc(p.author || "Equipe Tyar")}</span><span>Atualizado em <time datetime="${updated}">${fmtDate(updated)}</time></span>${p.reading_time ? `<span>${p.reading_time} min de leitura</span>` : ""}</div>
     ${pillar && pillar.slug !== p.slug ? `<a class="pillar-link" href="${r}${pillar.slug}/">Parte do guia: <strong>${esc(pillar.title)}</strong> →</a>` : ""}
     </div>
-    <figure class="post-cover"><img src="${r}capas/${p.slug}.svg" alt="" width="1200" height="630"></figure>
+    <figure class="post-cover"><img src="${r}capas/${p.slug}-capa.png" alt="${esc(p.title)}" width="1200" height="630" fetchpriority="high"></figure>
   </div>
 </header>
 <div class="wrap post-layout">
